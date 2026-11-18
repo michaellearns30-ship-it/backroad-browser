@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1530">
+<title>mix</title>
+<style>
+  :root { --ink:#f6e7bf; --gold:#e8c15a; --bg:#0d1530; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; background:#070b18; color:var(--ink); font-family: -apple-system, system-ui, sans-serif; }
+  body { padding: 14px 14px 28px; }
+  h1 { font: italic 30px Georgia, "Times New Roman", serif; margin: 4px 0 2px; letter-spacing: .5px; }
+  p.sub { margin: 0 0 14px; color:#9a9a92; font-size: 13px; }
+  label { display:block; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color:#8b8b83; margin: 14px 0 6px; }
+  input, button { font-family: inherit; }
+  input[type=text] {
+    width:100%; min-height:48px; padding: 12px 14px; border-radius:12px;
+    border:1px solid #2b3350; background:#131b34; color:var(--ink); font-size:17px;
+  }
+  input[type=text]:focus { outline:none; border-color: var(--gold); }
+  .row { display:flex; gap:10px; margin-top:12px; }
+  button {
+    flex:1; min-height:48px; border-radius:12px; border:1px solid #3a4363;
+    background:#1a2340; color:var(--ink); font-size:15px; padding: 10px 12px;
+  }
+  button.primary { background:var(--gold); border-color:var(--gold); color:#1a1405; font-weight:600; }
+  button:active { transform: translateY(1px); }
+  .frame { margin-top:16px; border-radius:14px; overflow:hidden; border:1px solid #232c48; background:#0a1024; }
+  canvas { display:block; width:100%; height:auto; }
+  .hint { font-size: 12px; color:#8b8b83; margin-top:10px; line-height:1.5; }
+  #sheet { position:fixed; inset:0; background:#05070f; display:none; flex-direction:column; z-index:9; }
+  #sheet.on { display:flex; }
+  #sheet .bar { padding: 12px 14px; display:flex; gap:10px; align-items:center; }
+  #sheet .bar span { flex:1; font-size:13px; color:#a9a9a0; }
+  #sheet img { flex:1; min-height:0; width:100%; object-fit:contain; }
+</style>
+</head>
+<body>
+
+<h1>mix</h1>
+<p class="sub">Type a topic. Get a cover. Save it. No account, no Claude. Open it any time.</p>
+
+<label for="topic">Topic</label>
+<input id="topic" type="text" value="Black holes" autocomplete="off" enterkeyhint="done" placeholder="black holes, sharks, volcanoes">
+
+<div class="row">
+  <button id="save" class="primary">Save PNG</button>
+  <button id="shuffle">Shuffle art</button>
+</div>
+
+<div class="frame"><canvas id="cover" width="1080" height="1920"></canvas></div>
+<p class="hint" id="hint">Save PNG opens the picture; long-press it and choose “Download image” to keep it.</p>
+
+<div id="sheet">
+  <div class="bar"><span>Long-press the picture → Download image</span><button id="close" style="flex:0 0 auto">Close</button></div>
+  <img id="big" alt="cover">
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var GOLD = '#e8c15a';
+  var INK = '#f6e7bf';
+  var NAVY = '#0d1530';
+  var canvas = document.getElementById('cover');
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+
+  // One line-art symbol per family of topics. Adding a family is one function and
+  // one line in the match table; nothing else in the file needs to know.
+  var ART = {
+    hole: function () {
+      ctx.beginPath(); ctx.ellipse(0, 0, 300, 96, -0.12, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0, 0, 240, 70, -0.12, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -4, 96, 0, Math.PI * 2);
+      ctx.fillStyle = '#050813'; ctx.fill(); ctx.stroke();
+      for (var i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-300 + i * 24, 92 + i * 4);
+        ctx.lineTo(-250 + i * 24, 120 + i * 4);
+        ctx.stroke();
+      }
+    },
+    volcano: function () {
+      ctx.beginPath();
+      ctx.moveTo(-300, 190); ctx.lineTo(-120, -40); ctx.lineTo(-40, 10);
+      ctx.lineTo(40, -70); ctx.lineTo(120, -10); ctx.lineTo(300, 190); ctx.closePath();
+      ctx.stroke();
+      for (var i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-40 + i * 16, 10 - i * 26);
+        ctx.lineTo(-70 + i * 16, -120 - i * 26);
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(-300, 190); ctx.lineTo(300, 190); ctx.stroke();
+    },
+    shark: function () {
+      ctx.beginPath();
+      ctx.moveTo(-310, 40); ctx.quadraticCurveTo(-120, -120, 120, -10);
+      ctx.quadraticCurveTo(220, 34, 300, -10);
+      ctx.quadraticCurveTo(200, 120, 40, 110);
+      ctx.quadraticCurveTo(-120, 100, -310, 40); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-20, -60); ctx.lineTo(20, -190); ctx.lineTo(90, -50); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-60, 90); ctx.lineTo(-90, 170); ctx.lineTo(0, 108); ctx.stroke();
+      for (var i = 0; i < 4; i++) {
+        ctx.beginPath(); ctx.arc(-230 + i * 46, 60, 7, 0, Math.PI * 2); ctx.stroke();
+      }
+    },
+    mountain: function () {
+      ctx.beginPath();
+      ctx.moveTo(-310, 170); ctx.lineTo(-130, -150); ctx.lineTo(20, 40);
+      ctx.lineTo(120, -60); ctx.lineTo(310, 170); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-310, 170); ctx.lineTo(310, 170); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-100, 170); ctx.lineTo(-40, 60); ctx.lineTo(10, 120); ctx.stroke();
+    },
+    moon: function () {
+      ctx.beginPath(); ctx.arc(0, 0, 250, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(80, -40, 210, 0, Math.PI * 2);
+      ctx.fillStyle = NAVY; ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-150, 90, 26, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-60, -140, 16, 0, Math.PI * 2); ctx.stroke();
+    },
+    planet: function () {
+      ctx.beginPath(); ctx.arc(0, 0, 170, 0, Math.PI * 2); ctx.stroke();
+      ctx.save(); ctx.rotate(-0.35);
+      ctx.beginPath(); ctx.ellipse(0, 0, 300, 74, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(150, -120, 34, 0, Math.PI * 2); ctx.stroke();
+    },
+    eye: function () {
+      ctx.beginPath();
+      ctx.moveTo(-300, 0); ctx.quadraticCurveTo(0, -220, 300, 0);
+      ctx.quadraticCurveTo(0, 220, -300, 0); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, 96, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fillStyle = GOLD; ctx.fill();
+    },
+    wave: function () {
+      for (var k = 0; k < 4; k++) {
+        ctx.beginPath();
+        for (var x = -300; x <= 300; x += 12) {
+          var y = -90 + k * 60 + Math.sin((x + k * 60) / 70) * 34;
+          if (x === -300) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    },
+    star: function () {
+      ctx.beginPath();
+      for (var i = 0; i < 5; i++) {
+        var a = -Math.PI / 2 + i * Math.PI * 2 / 5;
+        var b = a + Math.PI / 5;
+        ctx.lineTo(Math.cos(a) * 250, Math.sin(a) * 250);
+        ctx.lineTo(Math.cos(b) * 105, Math.sin(b) * 105);
+      }
+      ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, 280, 0, Math.PI * 2); ctx.stroke();
+    }
+  };
+
+  var MATCH = [
+    [/black ?hole|event horizon|singularity|space|galaxy|universe|cosmos|nasa/i, 'hole'],
+    [/volcan|magma|lava|eruption|iceland/i, 'volcano'],
+    [/shark|fish|ocean|deep ?sea|whale|reef/i, 'shark'],
+    [/mountain|everest|peak|alps|climb|hike/i, 'mountain'],
+    [/moon|lunar|eclipse|night sky/i, 'moon'],
+    [/planet|mars|earth|saturn|jupiter|orbit/i, 'planet'],
+    [/eye|vision|sight|optic/i, 'eye'],
+    [/wave|tsunami|tide|surf|storm|hurricane/i, 'wave']
+  ];
+
+  var order = Object.keys(ART);
+  var pick = 0, lastKey = 'star';
+
+  function artFor(topic) {
+    for (var i = 0; i < MATCH.length; i++) if (MATCH[i][0].test(topic)) return MATCH[i][1];
+    return null;
+  }
+
+  function wrap(text, maxWidth, font) {
+    ctx.font = font;
+    var words = text.split(/\s+/), lines = [], line = '';
+    for (var i = 0; i < words.length; i++) {
+      var t = line ? line + ' ' + words[i] : words[i];
+      if (ctx.measureText(t).width > maxWidth && line) { lines.push(line); line = words[i]; }
+      else line = t;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function draw() {
+    var topic = (document.getElementById('topic').value || 'the mix').trim().slice(0, 60);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    var bg = ctx.createRadialGradient(W / 2, H * 0.42, 120, W / 2, H * 0.5, H * 0.8);
+    bg.addColorStop(0, '#16213f');
+    bg.addColorStop(1, '#080d1d');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = GOLD;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // double frame with corner ticks
+    ctx.lineWidth = 5; ctx.strokeRect(52, 52, W - 104, H - 104);
+    ctx.lineWidth = 2; ctx.strokeRect(76, 76, W - 152, H - 152);
+    ctx.lineWidth = 6;
+    var c = [[52, 52, 1, 1], [W - 52, 52, -1, 1], [52, H - 52, 1, -1], [W - 52, H - 52, -1, -1]];
+    for (var i = 0; i < c.length; i++) {
+      ctx.beginPath();
+      ctx.moveTo(c[i][0] + c[i][2] * 54, c[i][1]);
+      ctx.lineTo(c[i][0], c[i][1]);
+      ctx.lineTo(c[i][0], c[i][1] + c[i][3] * 54);
+      ctx.stroke();
+    }
+
+    // kicker
+    ctx.fillStyle = GOLD;
+    ctx.textAlign = 'center';
+    ctx.font = '600 26px -apple-system, system-ui, sans-serif';
+    letterSpaced('THE MIX · ONE TOPIC', W / 2, 148, 9);
+
+    // title
+    var tf = 'italic 92px Georgia, "Times New Roman", serif';
+    var lines = wrap(topic, W - 300, tf);
+    var size = 92;
+    while (lines.length > 2 && size > 54) {
+      size -= 6;
+      tf = 'italic ' + size + 'px Georgia, "Times New Roman", serif';
+      lines = wrap(topic, W - 300, tf);
+    }
+    ctx.fillStyle = INK;
+    ctx.font = tf;
+    for (var j = 0; j < lines.length; j++) {
+      ctx.fillText(lines[j], W / 2, 330 + j * (size + 16));
+    }
+
+    // the art, inside a circle
+    var cy = 1040;
+    ctx.strokeStyle = GOLD;
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(W / 2, cy, 352, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(W / 2, cy, 372, 0, Math.PI * 2); ctx.stroke();
+
+    ctx.save();
+    ctx.translate(W / 2, cy);
+    ctx.scale(0.92, 0.92);
+    ctx.strokeStyle = GOLD;
+    ctx.lineWidth = 7;
+    (ART[lastKey] || ART.star)();
+    ctx.restore();
+
+    // star, bottom right of the circle
+    ctx.save();
+    ctx.translate(W / 2 + 292, cy + 268);
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 4;
+    ctx.beginPath();
+    for (var s = 0; s < 5; s++) {
+      var a = -Math.PI / 2 + s * Math.PI * 2 / 5;
+      var b = a + Math.PI / 5;
+      ctx.lineTo(Math.cos(a) * 42, Math.sin(a) * 42);
+      ctx.lineTo(Math.cos(b) * 17, Math.sin(b) * 17);
+    }
+    ctx.closePath(); ctx.stroke();
+    ctx.restore();
+
+    // waveform
+    ctx.strokeStyle = GOLD;
+    ctx.lineWidth = 4;
+    var bars = 46, bw = 12, gap = 8;
+    var totalW = bars * (bw + gap) - gap;
+    var x0 = (W - totalW) / 2, wy = 1560;
+    for (var k = 0; k < bars; k++) {
+      var h = 14 + Math.abs(Math.sin(k * 0.7) * Math.cos(k * 0.23)) * 78;
+      var x = x0 + k * (bw + gap);
+      ctx.beginPath();
+      ctx.moveTo(x, wy - h / 2);
+      ctx.lineTo(x, wy + h / 2);
+      ctx.stroke();
+    }
+
+    // footer
+    ctx.fillStyle = GOLD;
+    ctx.font = '600 24px -apple-system, system-ui, sans-serif';
+    letterSpaced('THE MIX IS YOURS', W / 2, 1706, 8);
+
+    ctx.fillStyle = '#9aa3c0';
+    ctx.textAlign = 'center';
+    ctx.font = '20px -apple-system, system-ui, sans-serif';
+    ctx.fillText('made on a phone', W / 2, 1772);
+  }
+
+  function letterSpaced(text, x, y, spacing) {
+    var chars = text.split('');
+    var widths = chars.map(function (ch) { return ctx.measureText(ch).width; });
+    var total = widths.reduce(function (a, b) { return a + b; }, 0) + spacing * (chars.length - 1);
+    var cx = x - total / 2;
+    var align = ctx.textAlign;
+    ctx.textAlign = 'left';
+    for (var i = 0; i < chars.length; i++) {
+      ctx.fillText(chars[i], cx, y);
+      cx += widths[i] + spacing;
+    }
+    ctx.textAlign = align;
+  }
+
+  function refresh() {
+    var topic = document.getElementById('topic').value;
+    var found = artFor(topic);
+    if (found) { lastKey = found; pick = 0; }
+    draw();
+  }
+
+  document.getElementById('topic').addEventListener('input', refresh);
+  document.getElementById('topic').addEventListener('change', refresh);
+
+  document.getElementById('shuffle').addEventListener('click', function () {
+    var idx = order.indexOf(lastKey);
+    // a topic with its own symbol keeps it; otherwise step through the families
+    if (artFor(document.getElementById('topic').value)) {
+      lastKey = order[(idx + 1) % order.length];
+    } else {
+      lastKey = order[pick % order.length];
+      pick++;
+    }
+    draw();
+  });
+
+  document.getElementById('save').addEventListener('click', function () {
+    var data = canvas.toDataURL('image/png');
+    var img = document.getElementById('big');
+    img.src = data;
+    document.getElementById('sheet').classList.add('on');
+  });
+
+  document.getElementById('close').addEventListener('click', function () {
+    document.getElementById('sheet').classList.remove('on');
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>
