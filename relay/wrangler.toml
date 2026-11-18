@@ -1,0 +1,17 @@
+name = "backroad-relay"
+main = "src/index.js"
+compatibility_date = "2026-11-18"
+
+# One Durable Object per room. A room is a phone and whoever is driving it.
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["Room"]
+
+[vars]
+# Leave ALERT_WEBHOOK unset to turn the text-message bridge off.
+# Set it with:  wrangler secret put PAIR_TOKEN
+#               wrangler secret put ALERT_WEBHOOK
