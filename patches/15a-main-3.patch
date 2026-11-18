@@ -1,0 +1,48 @@
+--- a/android/app/src/main/java/dev/backroad/browser/MainActivity.kt
++++ b/android/app/src/main/java/dev/backroad/browser/MainActivity.kt
+@@ -212,6 +273,20 @@
+         pushObservation()
+     }
+ 
++    /**
++     * The notebook is a sheet inside the console page, which is why there was no
++     * pencil anywhere on Google or YouTube. One tap on the pencil opens the page and
++     * the sheet together, and the sheet can then be closed over whatever you were on.
++     */
++    private fun openNotebook() {
++        pendingNotebook = true
++        openConsole()
++        if (console.url != null) {
++            pendingNotebook = false
++            tellConsole("openNotebook", "")
++        }
++    }
++
+     private fun closeConsole() {
+         console.visibility = View.GONE
+         consoleOpen = false
+@@ -219,7 +294,15 @@
+ 
+     private fun tellConsole(fn: String, text: String) {
+         val js = "window.$fn && window.$fn(${JSONObject.quote(text)})"
+-        runOnUiThread { console.evaluateJavascript(js, null) }
++        runOnUiThread {
++            // A console that has never loaded a page throws here, and this is called
++            // from the voice result path - exactly where a crash would look mysterious.
++            try {
++                if (console.url != null) console.evaluateJavascript(js, null)
++            } catch (t: Throwable) {
++                Log.w(TAG, "console not ready for $fn", t)
++            }
++        }
+     }
+ 
+     private fun toast(text: String) {
+@@ -246,6 +329,7 @@
+     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+         super.onActivityResult(requestCode, resultCode, data)
+         if (requestCode != VOICE_REQ) return
++        if (isFinishing || isDestroyed) return
+         val heard = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+         if (resultCode != RESULT_OK || heard.isNullOrBlank()) {
+             tellConsole("androidVoiceFailed", "nothing heard")
