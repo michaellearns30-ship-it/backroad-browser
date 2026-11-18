@@ -1,0 +1,51 @@
+--- a/android/app/src/main/java/dev/backroad/browser/MainActivity.kt
++++ b/android/app/src/main/java/dev/backroad/browser/MainActivity.kt
+@@ -7,6 +7,7 @@
+ import android.graphics.Canvas
+ import android.graphics.Color
+ import android.os.Bundle
++import android.os.Message
+ import android.speech.RecognizerIntent
+ import android.util.Base64
+ import android.util.Log
+@@ -51,6 +52,7 @@
+     private lateinit var address: EditText
+     private lateinit var bar: LinearLayout
+     private var consoleOpen = false
++    private var pendingNotebook = false
+ 
+     companion object {
+         /** Where the console lives. Change this one string after you publish the repo. */
+@@ -63,6 +65,7 @@
+     @SuppressLint("SetJavaScriptEnabled")
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
++        CrashCatcher.install(this)
+ 
+         root = FrameLayout(this)
+ 
+@@ -103,6 +106,7 @@
+             LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginStart = dp(4); marginEnd = dp(4) }
+         )
+         bar.addView(iconButton("⌗") { openConsole() }, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(4) })
++        bar.addView(iconButton("✎") { openNotebook() }, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(4) })
+         bar.addView(iconButton("🎙") { listen() }, LinearLayout.LayoutParams(dp(44), dp(44)))
+ 
+         column.addView(browser, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+@@ -113,6 +117,7 @@
+         console.visibility = View.GONE
+ 
+         setContentView(root)
++        CrashCatcher.showIfAny(this)
+ 
+         if (savedInstanceState == null) browser.loadUrl(START_URL)
+     }
+@@ -158,7 +163,7 @@
+         if (role == "console") {
+             w.addJavascriptInterface(Bridge(), "Android")
+         } else {
+-            w.webChromeClient = WebChromeClient()
++            w.webChromeClient = popupChrome()
+         }
+ 
+         w.webViewClient = object : WebViewClient() {
