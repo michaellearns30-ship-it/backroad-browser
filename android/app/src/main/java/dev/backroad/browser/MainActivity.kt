@@ -78,7 +78,7 @@ class MainActivity : Activity() {
         }
 
         address = EditText(this).apply {
-            singleLine = true
+            setSingleLine()
             imeOptions = EditorInfo.IME_ACTION_GO
             hint = "search or address"
             setTextColor(Color.parseColor("#e8e6df"))
