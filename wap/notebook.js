@@ -125,6 +125,10 @@
     sheet.hidden = true;
   }
 
+  // The app's pencil button calls this, so the notebook is one tap away from any
+  // page instead of being buried inside the console.
+  window.openNotebook = function () { if (sheet.hidden) open(); };
+
   btn.addEventListener('click', function () { if (sheet.hidden) open(); else close(); });
   document.getElementById('nbClose').addEventListener('click', close);
   sheet.addEventListener('click', function (e) { if (e.target === sheet) close(); });
