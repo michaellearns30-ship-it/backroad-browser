@@ -7,6 +7,7 @@
 <title>backroad</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./notebook.css">
 </head>
 <body>
 
@@ -48,11 +49,27 @@
       <button id="btnConnect" class="primary" type="button">Connect</button>
       <button id="btnDisconnect" type="button">Disconnect</button>
     </div>
-    <p class="dim" id="nativeNote">Checking for hands…</p>
+    <p class="dim" id="nativeNote">Checking for hands&hellip;</p>
     <button id="btnCloseSettings" type="button">Close</button>
   </div>
 </section>
 
+<section id="notebook" class="sheet" hidden>
+  <div class="sheet-inner nb-inner">
+    <h2>notebook</h2>
+    <div class="nb-page"><canvas id="nbCanvas"></canvas></div>
+    <div class="row nb-tools">
+      <button type="button" id="nbPen" class="nb-tool is-on">pen</button>
+      <button type="button" id="nbErase" class="nb-tool">eraser</button>
+      <button type="button" id="nbUndo" class="nb-tool">undo</button>
+      <button type="button" id="nbClear" class="nb-tool">clear</button>
+    </div>
+    <textarea id="nbText" rows="3" placeholder="typed notes - this part the agent can read"></textarea>
+    <button type="button" id="nbClose">Close</button>
+  </div>
+</section>
+
+<script src="./notebook.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

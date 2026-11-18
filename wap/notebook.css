@@ -1,0 +1,52 @@
+/* notebook - paper inside a dark console */
+
+.nb-inner { gap: 12px; }
+
+.nb-page {
+  background: #f7f2e5;
+  border: 1px solid #ded3bb;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .08);
+  background-image: linear-gradient(#efe7d5 1px, transparent 1px);
+  background-size: 100% 28px;
+  background-position: 0 14px;
+}
+
+.nb-page canvas {
+  display: block;
+  width: 100%;
+  height: 50vh;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.nb-tools { flex-wrap: wrap; }
+
+.nb-tool {
+  flex: 1 1 60px;
+  min-height: 44px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.nb-tool.is-on {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+#nbText {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 11px;
+  padding: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+#btnNotebook { font-size: 18px; }
