@@ -1,5 +1,8 @@
 /* notebook - paper inside a dark console */
 
+/* insurance: a display rule in styles.css must not beat the hidden attribute */
+#notebook[hidden] { display: none; }
+
 .nb-inner { gap: 12px; }
 
 .nb-page {
