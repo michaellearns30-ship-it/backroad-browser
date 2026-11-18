@@ -38,9 +38,9 @@
       ctx.clearRect(0, 0, boxW, boxH);
       ctx.drawImage(img, 0, 0, boxW, boxH);
       ctx.restore();
-      if (done) done();
+      if (done) done(true);
     };
-    img.onerror = function () { if (done) done(); };
+    img.onerror = function () { if (done) done(false); };
     img.src = url;
   }
 
@@ -72,8 +72,11 @@
 
   function restore(url) {
     restoring = true;
-    paint(url, function () {
+    paint(url, function (ok) {
       restoring = false;
+      // A restore that could not decode leaves the canvas empty. Drop the held
+      // save rather than writing that emptiness over the copy still in storage.
+      if (!ok) { saveWhenRestored = false; return; }
       if (saveWhenRestored) { saveWhenRestored = false; save(); }
     });
   }
