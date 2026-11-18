@@ -1,0 +1,71 @@
+--- a/android/app/src/main/java/dev/backroad/browser/MainActivity.kt
++++ b/android/app/src/main/java/dev/backroad/browser/MainActivity.kt
+@@ -182,12 +187,68 @@
+                 if (view === browser) {
+                     address.setText(url)
+                     if (consoleOpen) pushObservation()
++                } else if (view === console) {
++                    if (pendingNotebook) {
++                        pendingNotebook = false
++                        tellConsole("openNotebook", "")
++                    }
+                 }
+             }
+         }
+         return w
+     }
+ 
++    /**
++     * A login arrives as a window.open popup - Google, Claude, anything with an
++     * account picker. A WebView with no onCreateWindow silently drops it, the flow
++     * stalls halfway, and the page left behind is half signed in and broken. Give
++     * the popup a real but invisible WebView and hand its first real address to the
++     * browser pane, so the login finishes where the person can see it.
++     */
++    private fun popupChrome(): WebChromeClient = object : WebChromeClient() {
++        override fun onCreateWindow(
++            view: WebView,
++            isDialog: Boolean,
++            isUserGesture: Boolean,
++            resultMsg: Message
++        ): Boolean {
++            val popup = WebView(this@MainActivity)
++            popup.settings.javaScriptEnabled = true
++            popup.settings.domStorageEnabled = true
++            popup.settings.userAgentString = view.settings.userAgentString
++            val holder = FrameLayout(this@MainActivity)
++            holder.addView(popup, ViewGroup.LayoutParams(dp(320), dp(480)))
++            holder.alpha = 0f
++            root.addView(holder, FrameLayout.LayoutParams(dp(320), dp(480)))
++            popup.webViewClient = object : WebViewClient() {
++                private var handedOff = false
++                override fun shouldOverrideUrlLoading(v: WebView, request: WebResourceRequest): Boolean {
++                    val scheme = (request.url.scheme ?: "").lowercase(Locale.ROOT)
++                    if (scheme == "http" || scheme == "https") return false
++                    return try {
++                        startActivity(Intent(Intent.ACTION_VIEW, request.url))
++                        true
++                    } catch (t: Throwable) {
++                        true
++                    }
++                }
++                override fun onPageStarted(v: WebView, url: String?, favicon: Bitmap?) {
++                    if (handedOff) return
++                    if (url == null || url == "about:blank" || !url.startsWith("http")) return
++                    handedOff = true
++                    holder.post {
++                        try { root.removeView(holder) } catch (t: Throwable) { }
++                        try { popup.destroy() } catch (t: Throwable) { }
++                    }
++                    browser.loadUrl(url)
++                }
++            }
++            (resultMsg.obj as? WebView.WebViewTransport)?.webView = popup
++            resultMsg.sendToTarget()
++            return true
++        }
++    }
++
+     /** Search if it looks like words, load it if it looks like an address. */
+     private fun go(input: String) {
+         val raw = input.trim()
