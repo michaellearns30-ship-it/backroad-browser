@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e0f0d">
+<title>backroad</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<header class="top">
+  <span class="brand">backroad</span>
+  <span id="chip" class="chip" data-state="off">offline</span>
+  <button id="btnSettings" class="icon" aria-label="Settings">&#9881;</button>
+</header>
+
+<main id="log" class="log" aria-live="polite">
+  <div class="hint" id="hint">
+    <strong>Console ready.</strong>
+    <p>This page is the control surface. On its own it can talk and approve. Inside
+    the app it also has hands: it can look at the page you are on, tap, type, scroll
+    and take a picture.</p>
+    <p class="dim">Tap &#9881; to set the relay address, room and token.</p>
+  </div>
+</main>
+
+<form id="composer" class="composer" autocomplete="off">
+  <button type="button" id="btnMic" class="icon mic" aria-label="Speak">&#127908;</button>
+  <input id="cmd" type="text" enterkeyhint="send" placeholder="type a command, or tap the mic">
+  <button type="submit" class="send" aria-label="Send">&#8594;</button>
+</form>
+
+<section id="settings" class="sheet" hidden>
+  <div class="sheet-inner">
+    <h2>Connection</h2>
+    <label>Relay
+      <input id="cfgUrl" type="url" inputmode="url" placeholder="wss://backroad-relay.you.workers.dev/ws">
+    </label>
+    <label>Room
+      <input id="cfgRoom" type="text" placeholder="michael">
+    </label>
+    <label>Token
+      <input id="cfgToken" type="password" placeholder="PAIR_TOKEN">
+    </label>
+    <div class="row">
+      <button id="btnConnect" class="primary" type="button">Connect</button>
+      <button id="btnDisconnect" type="button">Disconnect</button>
+    </div>
+    <p class="dim" id="nativeNote">Checking for hands…</p>
+    <button id="btnCloseSettings" type="button">Close</button>
+  </div>
+</section>
+
+<script src="./app.js"></script>
+</body>
+</html>
