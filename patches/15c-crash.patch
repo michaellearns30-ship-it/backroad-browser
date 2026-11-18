@@ -1,0 +1,82 @@
+diff --git a/android/app/src/main/java/dev/backroad/browser/Crash.kt b/android/app/src/main/java/dev/backroad/browser/Crash.kt
+new file mode 100644
+index 0000000..43b446c
+--- /dev/null
++++ b/android/app/src/main/java/dev/backroad/browser/Crash.kt
+@@ -0,0 +1,76 @@
++package dev.backroad.browser
++
++import android.app.Activity
++import android.app.AlertDialog
++import android.content.ClipData
++import android.content.ClipboardManager
++import android.content.Context
++import android.os.Build
++import android.util.Log
++import android.widget.ScrollView
++import android.widget.TextView
++import java.io.File
++import java.text.SimpleDateFormat
++import java.util.Date
++import java.util.Locale
++
++/**
++ * Nothing on a phone ever tells you why an app died, so every crash here was a
++ * guess. This records the last one to a file before the process goes away and puts
++ * it on screen at the next launch: text someone can copy, instead of a mystery.
++ */
++object CrashCatcher {
++
++    private const val TAG = "backroad"
++    private var installed = false
++
++    private fun file(activity: Activity): File = File(activity.filesDir, "last-crash.txt")
++
++    fun install(activity: Activity) {
++        if (installed) return
++        installed = true
++        val previous = Thread.getDefaultUncaughtExceptionHandler()
++        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
++            try {
++                val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
++                val head = stamp + "\n" + Build.MANUFACTURER + " " + Build.MODEL +
++                    " / Android " + Build.VERSION.RELEASE + " (SDK " + Build.VERSION.SDK_INT + ")\n\n"
++                file(activity).writeText(head + Log.getStackTraceString(error))
++            } catch (t: Throwable) {
++                Log.w(TAG, "could not record the crash", t)
++            }
++            previous?.uncaughtException(thread, error)
++        }
++    }
++
++    fun showIfAny(activity: Activity) {
++        val f = file(activity)
++        if (!f.exists()) return
++        val text = try { f.readText() } catch (t: Throwable) { "" }
++        if (text.isBlank()) {
++            f.delete()
++            return
++        }
++        val view = TextView(activity).apply {
++            this.text = text
++            textSize = 11f
++            setTextIsSelectable(true)
++            setPadding(40, 40, 40, 40)
++        }
++        val scroller = ScrollView(activity).apply { addView(view) }
++        AlertDialog.Builder(activity)
++            .setTitle("Last crash")
++            .setView(scroller)
++            .setPositiveButton("Copy") { _, _ ->
++                try {
++                    val clip = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
++                    clip.setPrimaryClip(ClipData.newPlainText("crash", text))
++                } catch (t: Throwable) {
++                    Log.w(TAG, "clipboard refused", t)
++                }
++                f.delete()
++            }
++            .setNegativeButton("Clear") { _, _ -> f.delete() }
++            .show()
++    }
++}
