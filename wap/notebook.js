@@ -24,7 +24,7 @@
   var pen = document.getElementById('nbPen');
   var eraser = document.getElementById('nbErase');
   var erasing = false, drawing = false, last = null;
-  var undoStack = [], saveTimer = null, boxW = 0, boxH = 0;
+  var undoStack = [], saveTimer = null, boxW = 0, boxH = 0, loaded = false;
 
   function paint(url, done) {
     var img = new Image();
@@ -100,7 +100,7 @@
     sheet.hidden = false;
     window.requestAnimationFrame(function () {
       var prev = fit();
-      if (prev) paint(prev); else load();
+      if (!loaded) { loaded = true; load(); } else if (prev) paint(prev);
     });
   }
 
