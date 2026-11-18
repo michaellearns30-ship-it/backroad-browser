@@ -21,6 +21,18 @@ jobs:
           tar xzf /tmp/backroad.tar.gz -C . --skip-old-files
           ls android/app/src/main/java/dev/backroad/browser/
 
+      # The archive cannot be edited from here, so the one compile error it carries is
+      # patched on the way out and committed with the rest of the tree. Idempotent: on a
+      # repo that already has the fix this does nothing. When the archive is next
+      # regenerated, fix this line in the source instead and delete this step.
+      - name: Patch the known compile error
+        run: |
+          set -euo pipefail
+          F=android/app/src/main/java/dev/backroad/browser/MainActivity.kt
+          sed -i 's/^\( *\)singleLine = true$/\1setSingleLine()/' "$F"
+          if grep -q 'singleLine = true' "$F"; then echo "patch did not apply"; exit 1; fi
+          grep -n 'setSingleLine()' "$F"
+
       - name: Commit the real tree
         run: |
           set -euo pipefail
