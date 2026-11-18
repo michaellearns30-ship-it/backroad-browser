@@ -25,6 +25,10 @@
   var eraser = document.getElementById('nbErase');
   var erasing = false, drawing = false, last = null;
   var undoStack = [], saveTimer = null, boxW = 0, boxH = 0, loaded = false;
+  // A restore draws through an <img>, which lands a frame or two after fit() has
+  // already blanked the canvas. Until it lands the canvas is empty, so saving in
+  // that window writes an empty picture over the real one. Hold the save instead.
+  var restoring = false, saveWhenRestored = false;
 
   function paint(url, done) {
     var img = new Image();
@@ -63,11 +67,20 @@
     if (!raw) return;
     try { saved = JSON.parse(raw); } catch (e) { return; }
     if (saved && typeof saved.text === 'string') notes.value = saved.text;
-    if (saved && typeof saved.png === 'string' && saved.png.indexOf('data:image') === 0) paint(saved.png);
+    if (saved && typeof saved.png === 'string' && saved.png.indexOf('data:image') === 0) restore(saved.png);
+  }
+
+  function restore(url) {
+    restoring = true;
+    paint(url, function () {
+      restoring = false;
+      if (saveWhenRestored) { saveWhenRestored = false; save(); }
+    });
   }
 
   function save() {
     window.clearTimeout(saveTimer);
+    if (restoring) { saveWhenRestored = true; return; }
     saveTimer = window.setTimeout(function () {
       try {
         window.localStorage.setItem(KEY, JSON.stringify({ png: canvas.toDataURL('image/png'), text: notes.value }));
@@ -100,7 +113,7 @@
     sheet.hidden = false;
     window.requestAnimationFrame(function () {
       var prev = fit();
-      if (!loaded) { loaded = true; load(); } else if (prev) paint(prev);
+      if (!loaded) { loaded = true; load(); } else if (prev) restore(prev);
     });
   }
 
